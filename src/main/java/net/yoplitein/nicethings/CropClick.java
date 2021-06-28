@@ -18,7 +18,6 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.CropBlock;
 import net.minecraft.block.StemBlock;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -37,7 +36,6 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.registry.Registry;
-import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
 
 public class CropClick {
@@ -103,6 +101,8 @@ public class CropClick {
         final var basePos = new BlockPos(0, 250, 0);
         var chunk = world.getChunk(basePos);
         
+        // there's no other way AFAICT to determine whether a block can be placed on
+        // any given block, so we use this wonderful kludge
         chunk.setBlockState(basePos, block.getDefaultState(), false);
         var result = block.getDefaultState().canPlaceAt(world, basePos.add(0, 1, 0));
         chunk.setBlockState(basePos, Blocks.AIR.getDefaultState(), false);
@@ -112,26 +112,31 @@ public class CropClick {
     
     static void buildWhitelist(MinecraftServer server)
     {
+        final var blockUseMethodName = System.getProperty("fabric.development", "false").equalsIgnoreCase("true") ? "onUse" : "method_9534";
+        
         for(var regEntry: Registry.BLOCK.getEntries())
         {
             var block = regEntry.getValue();
+            
+            // discard melon/pumpkin, and cave plants (at least as of 1.17?)
             if(block instanceof StemBlock || block instanceof AbstractPlantPartBlock)
                 continue;
             
             var state = block.getDefaultState();
             IntProperty ageProp = null;
             
+            // only consider blocks which have some sort of age property
             outer: for(var prop: state.getProperties())
                 for(var testAgeProp: allAgeProps)
                     if(prop == testAgeProp) {
                         ageProp = (IntProperty)prop;
                         break outer;
                     }
-            
             if(ageProp == null) continue;
             
+            // do nothing if the block itself has right-click functionality (e.g. berry bushes)
             Method onUseMethod = null;
-            try { onUseMethod = block.getClass().getMethod("onUse", BlockState.class, World.class, BlockPos.class, PlayerEntity.class, Hand.class, BlockHitResult.class); }
+            try { onUseMethod = block.getClass().getMethod(blockUseMethodName, BlockState.class, World.class, BlockPos.class, PlayerEntity.class, Hand.class, BlockHitResult.class); }
             catch(Exception ex) { throw new RuntimeException("this shouldn't be possible", ex); }
             if(onUseMethod.getDeclaringClass() != AbstractBlock.class)
             {
@@ -159,19 +164,14 @@ public class CropClick {
         
         // only work with an empty main hand
         // cheap fix to prevent weird bugs when trying to place plants on oneanother
-        if(hand != Hand.MAIN_HAND || !player.getStackInHand(hand).isEmpty()){
-            LOGGER.info("skip bad hand {} {}", hand, player.getStackInHand(hand));
-            return ActionResult.PASS;
-        }
+        if(hand != Hand.MAIN_HAND || !player.getStackInHand(hand).isEmpty()) return ActionResult.PASS;
         
         var pos = hitResult.getBlockPos();
         var state = world.getBlockState(pos);
         var block = state.getBlock();
         var info = whitelist.get(Registry.BLOCK.getId(block));
         
-        if(info == null) { LOGGER.debug("no info for {}", block); return ActionResult.PASS; }
-        
-        LOGGER.info("plant {} clicked at {} (info {})", state, pos, info);
+        if(info == null) return ActionResult.PASS;
         
         List<ItemStack> drops;
         if(info.vertical)
@@ -184,7 +184,6 @@ public class CropClick {
                 topPos = up;
             }
             
-            LOGGER.debug("vertical top at {}", topPos);
             drops = new ArrayList<>();
             
             BlockPos stemPos = topPos;
@@ -204,7 +203,6 @@ public class CropClick {
                 
                 drops.addAll(getDrops(world, stemPos, stemState));
                 world.setBlockState(stemPos, Blocks.AIR.getDefaultState());
-                LOGGER.debug("set air {} drops {}", stemPos, drops);
                 
                 stemPos = nextPos;
                 stemState = nextState;
@@ -217,7 +215,6 @@ public class CropClick {
                 LOGGER.debug("skipping {} because it is not fully grown");
                 return ActionResult.PASS;
             }
-            LOGGER.debug("not vertical {}", pos);
             
             drops = getDrops(world, pos, state);
             var foundSeed = false;
