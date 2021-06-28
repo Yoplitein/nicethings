@@ -4,7 +4,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,22 +11,19 @@ import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.fabricmc.fabric.api.loot.v1.FabricLootSupplierBuilder;
-import net.fabricmc.fabric.api.loot.v1.event.LootTableLoadingCallback.LootTableSetter;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.AbstractPlantPartBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.CropBlock;
 import net.minecraft.block.StemBlock;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.loot.LootManager;
 import net.minecraft.loot.context.LootContext;
 import net.minecraft.loot.context.LootContextParameters;
-import net.minecraft.resource.ResourceManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -57,7 +53,7 @@ public class CropClick {
     };
     static HashMap<Identifier, CropInfo> whitelist = new HashMap<>();
     
-    public static record CropInfo(Item seeds, IntProperty ageProp, int maxAge) {}
+    static record CropInfo(Item seeds, boolean vertical, IntProperty ageProp, int maxAge) {}
     
     public static void initialize()
     {
@@ -80,6 +76,15 @@ public class CropClick {
         return block.getDefaultState().with(ageProp, maxOf(ageProp)).getDroppedStacks(ctx);
     }
     
+    static List<ItemStack> getDrops(World world, BlockPos pos, BlockState state)
+    {
+        var ctx = new LootContext.Builder((ServerWorld)world)
+            .parameter(LootContextParameters.ORIGIN, Vec3d.of(pos))
+            .parameter(LootContextParameters.TOOL, ItemStack.EMPTY)
+        ;
+        return state.getDroppedStacks(ctx);
+    }
+    
     static @Nullable Item getSeed(MinecraftServer server, Block block, IntProperty ageProp)
     {
         if(block instanceof CropBlock)
@@ -91,6 +96,18 @@ public class CropClick {
             if(dropsSelf) return block.asItem();
             else return null;
         }
+    }
+    
+    private static boolean isVertical(World world, Block block)
+    {
+        final var basePos = new BlockPos(0, 250, 0);
+        var chunk = world.getChunk(basePos);
+        
+        chunk.setBlockState(basePos, block.getDefaultState(), false);
+        var result = block.getDefaultState().canPlaceAt(world, basePos.add(0, 1, 0));
+        chunk.setBlockState(basePos, Blocks.AIR.getDefaultState(), false);
+        
+        return result;
     }
     
     static void buildWhitelist(MinecraftServer server)
@@ -129,60 +146,102 @@ public class CropClick {
                 continue;
             }
             
-            // TODO check if vertical (block.canPlaceOn(block))
-            
             var maxAge = maxOf(ageProp);
-            LOGGER.debug("whitelist {} with seed {} (grows to {})", block, seed, maxAge);
-            whitelist.put(regEntry.getKey().getValue(), new CropInfo(seed, ageProp, maxAge));
+            var vertical = isVertical(server.getOverworld(), block);
+            LOGGER.debug("whitelist {} with seed {} ({})", block, seed, vertical ? "grows vertically" : String.format("grows to %d", maxAge));
+            whitelist.put(regEntry.getKey().getValue(), new CropInfo(seed, vertical, ageProp, maxAge));
         }
     }
-    
+
     static ActionResult onCropClicked(PlayerEntity player, World world, Hand hand, BlockHitResult hitResult)
     {
-        GameMode gameMode = world.isClient ? MinecraftClient.getInstance().interactionManager.getCurrentGameMode() : ((ServerPlayerEntity)player).interactionManager.getGameMode();
-        if(/* TODO: network whitelist */ world.isClient || !gameMode.isSurvivalLike()) return ActionResult.PASS;
+        if(world.isClient || !((ServerPlayerEntity)player).interactionManager.getGameMode().isSurvivalLike()) return ActionResult.PASS;
+        
+        // only work with an empty main hand
+        // cheap fix to prevent weird bugs when trying to place plants on oneanother
+        if(hand != Hand.MAIN_HAND || !player.getStackInHand(hand).isEmpty()){
+            LOGGER.info("skip bad hand {} {}", hand, player.getStackInHand(hand));
+            return ActionResult.PASS;
+        }
         
         var pos = hitResult.getBlockPos();
         var state = world.getBlockState(pos);
         var block = state.getBlock();
         var info = whitelist.get(Registry.BLOCK.getId(block));
         
-        if(info == null) return ActionResult.PASS;
-        
-        if(state.get(info.ageProp) < info.maxAge)
-        {
-            LOGGER.debug("skipping {} because it is not fully grown");
-            return ActionResult.PASS;
-        }
+        if(info == null) { LOGGER.debug("no info for {}", block); return ActionResult.PASS; }
         
         LOGGER.info("plant {} clicked at {} (info {})", state, pos, info);
         
-        var ctx = new LootContext.Builder((ServerWorld)world)
-            .parameter(LootContextParameters.ORIGIN, Vec3d.ZERO)
-            .parameter(LootContextParameters.TOOL, ItemStack.EMPTY)
-        ;
-        List<ItemStack> drops = state.getDroppedStacks(ctx);
-        var foundSeed = false;
-        
-        for(var drop: drops)
-            if(drop.isOf(info.seeds))
-            {
-                drop.setCount(drop.getCount() - 1);
-                foundSeed = true;
-                break;
-            }
-        
-        if(!foundSeed)
+        List<ItemStack> drops;
+        if(info.vertical)
         {
-            LOGGER.warn("no seed found! {} at {} (info {})", state, pos, info);
-            return ActionResult.PASS;
+            var topPos = pos;
+            while(true)
+            {
+                var up = topPos.up();
+                if(world.getBlockState(up).getBlock() != block) break;
+                topPos = up;
+            }
+            
+            LOGGER.debug("vertical top at {}", topPos);
+            drops = new ArrayList<>();
+            
+            BlockPos stemPos = topPos;
+            BlockState stemState = world.getBlockState(stemPos);
+            for(int _n = 0; _n < 16; _n++) // bamboo only grows up to 16 blocks tall, so limit ourselves to that
+            {
+                // first we check what block is underneath us
+                // if we're the bottom-most block then we should break, *not* adding drops
+                var nextPos = stemPos.down();
+                var nextState = world.getBlockState(nextPos);
+                if(nextState.getBlock() != block)
+                {
+                    // reset the base block instead of the block that was clicked on
+                    pos = stemPos;
+                    break;
+                }
+                
+                drops.addAll(getDrops(world, stemPos, stemState));
+                world.setBlockState(stemPos, Blocks.AIR.getDefaultState());
+                LOGGER.debug("set air {} drops {}", stemPos, drops);
+                
+                stemPos = nextPos;
+                stemState = nextState;
+            }
+        }
+        else
+        {
+            if(state.get(info.ageProp) < info.maxAge)
+            {
+                LOGGER.debug("skipping {} because it is not fully grown");
+                return ActionResult.PASS;
+            }
+            LOGGER.debug("not vertical {}", pos);
+            
+            drops = getDrops(world, pos, state);
+            var foundSeed = false;
+            
+            for(var drop: drops)
+                if(drop.isOf(info.seeds))
+                {
+                    drop.setCount(drop.getCount() - 1);
+                    foundSeed = true;
+                    break;
+                }
+            
+            if(!foundSeed)
+            {
+                LOGGER.warn("no seed found! {} at {} (info {})", state, pos, info);
+                return ActionResult.PASS;
+            }
         }
         
         drops.removeIf(stack -> stack.getCount() <= 0);
         drops.forEach(stack -> giveOrDrop(stack, player));
         world.setBlockState(pos, state.with(info.ageProp, 0));
         
-        return ActionResult.PASS;
+        return ActionResult.SUCCESS;
     }
     
     static void giveOrDrop(ItemStack stack, PlayerEntity ply)
