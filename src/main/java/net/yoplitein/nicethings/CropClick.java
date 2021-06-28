@@ -21,6 +21,7 @@ import net.minecraft.block.StemBlock;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.ToolItem;
 import net.minecraft.loot.context.LootContext;
 import net.minecraft.loot.context.LootContextParameters;
 import net.minecraft.server.MinecraftServer;
@@ -162,9 +163,10 @@ public class CropClick {
     {
         if(world.isClient || !((ServerPlayerEntity)player).interactionManager.getGameMode().isSurvivalLike()) return ActionResult.PASS;
         
-        // only work with an empty main hand
+        // only work with an empty hand, or a tool
         // cheap fix to prevent weird bugs when trying to place plants on oneanother
-        if(hand != Hand.MAIN_HAND || !player.getStackInHand(hand).isEmpty()) return ActionResult.PASS;
+        final var handStack = player.getStackInHand(hand);
+        if(!handStack.isEmpty() && !(handStack.getItem() instanceof ToolItem)) return ActionResult.PASS;
         
         var pos = hitResult.getBlockPos();
         var state = world.getBlockState(pos);
