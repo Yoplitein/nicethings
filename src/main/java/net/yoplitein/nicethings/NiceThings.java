@@ -5,7 +5,8 @@ import org.apache.logging.log4j.Logger;
 
 import net.fabricmc.api.ModInitializer;
 
-public class NiceThings implements ModInitializer {
+public class NiceThings implements ModInitializer
+{
 	public static final Logger LOGGER = LogManager.getLogger();
 	
 	@Override

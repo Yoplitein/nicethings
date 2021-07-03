@@ -39,7 +39,8 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.World;
 
-public class CropClick {
+public class CropClick
+{
     static final Logger LOGGER = LogManager.getLogger();
     static final Property[] allAgeProps = {
         Properties.AGE_1,
