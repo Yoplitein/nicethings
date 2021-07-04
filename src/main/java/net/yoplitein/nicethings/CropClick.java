@@ -29,7 +29,6 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.property.IntProperty;
 import net.minecraft.state.property.Properties;
-import net.minecraft.state.property.Property;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
@@ -42,7 +41,7 @@ import net.minecraft.world.World;
 public class CropClick
 {
     static final Logger LOGGER = LogManager.getLogger();
-    static final Property[] allAgeProps = {
+    static final IntProperty[] allAgeProps = {
         Properties.AGE_1,
         Properties.AGE_2,
         Properties.AGE_3,
