@@ -10,7 +10,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.yoplitein.nicethings.event.PlayerSneakCallback;
 
 @Mixin(Entity.class)
-public class EntitySneakMixin
+public class EntityMixin
 {
     @Inject(at = @At("RETURN"), method = "setSneaking(Z)V")
     public void setSneaking(boolean sneaking, CallbackInfo info)
