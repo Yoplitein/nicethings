@@ -14,5 +14,6 @@ public class NiceThings implements ModInitializer
 		LOGGER.info("hello from nice things");
 		
 		CropClick.initialize();
+		Twerking.initialize();
 	}
 }

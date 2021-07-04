@@ -23,6 +23,7 @@
     ]
   },
   "mixins": [
+    "nicethings.mixins.json"
   ],
   "accessWidener": "nicethings.accesswidener",
 
