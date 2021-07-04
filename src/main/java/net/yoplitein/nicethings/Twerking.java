@@ -50,7 +50,7 @@ public class Twerking
     
     static void onPlayerSneak(PlayerEntity player)
     {
-        if(player.getEntityWorld().isClient) return;
+        if(player.getEntityWorld().isClient) return; // TODO: just move this (and crop click) into server init
         final var world = (ServerWorld)player.getEntityWorld();
         
         final var uuid = player.getUuid();

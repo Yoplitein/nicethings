@@ -3,9 +3,9 @@
     "minVersion": "0.8",
     "package": "net.yoplitein.nicethings.mixin",
     "compatabilityLevel": "JAVA_8",
-    "mixins": ["EntityMixin"],
+    "mixins": ["EntityMixin", "PlayerMixin"],
     "client": [],
-    "server": [],
+    "server": ["SleepManagerMixin"],
     "injectors": {
         "defaultRequire": 1
     }
