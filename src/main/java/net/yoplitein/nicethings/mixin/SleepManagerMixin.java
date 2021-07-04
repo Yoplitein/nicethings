@@ -20,9 +20,9 @@ public class SleepManagerMixin
     
     public boolean update(List<ServerPlayerEntity> players)
     {
-        // final var that = (SleepManager)(Object)this;
         final var prevTotal = total;
         final var prevSleeping = sleeping;
+        int numMiners = 0;
         total = sleeping = 0;
         
         for(var player: players)
@@ -30,8 +30,16 @@ public class SleepManagerMixin
             if(player.isSpectator()) continue;
             total++;
             
-            if(player.isSleeping() || player.getPos().y < 64.0) sleeping++;
+            final var isMiner = player.getPos().y < 60.0;
+            if(player.isSleeping() || isMiner)
+            {
+                if(isMiner) numMiners++;
+                sleeping++;
+            }
         }
+        
+        // fixes a bug where killing someone while crossing the threshold would trigger a skip
+        if(numMiners == total) sleeping = 0;
         
         return (prevSleeping > 0 || sleeping > 0) && (prevTotal != total || prevSleeping != sleeping);
     }
