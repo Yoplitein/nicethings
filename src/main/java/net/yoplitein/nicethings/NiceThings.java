@@ -10,7 +10,8 @@ public class NiceThings implements ModInitializer
 	public static final Logger LOGGER = LogManager.getLogger();
 	
 	@Override
-	public void onInitialize() {
+	public void onInitialize()
+	{
 		LOGGER.info("hello from nice things");
 		
 		CropClick.initialize();
