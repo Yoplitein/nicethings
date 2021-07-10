@@ -1,0 +1,21 @@
+{
+    "ambientocclusion": false,
+    "textures": {
+        "main": "nicethings:block/megatorch",
+        "particle": "minecraft:block/torch"
+    },
+    "elements": [
+        {
+            "from": [5, 0, 5],
+            "to": [11, 24, 11],
+            "shade": false,
+            "faces": {
+                "up": { "texture": "#main", "uv": [0, 0, 3, 3] },
+                "north": { "texture": "#main", "uv": [0, 0, 3, 16] },
+                "south": { "texture": "#main", "uv": [0, 0, 3, 16] },
+                "east": { "texture": "#main", "uv": [0, 0, 3, 16] },
+                "west": { "texture": "#main", "uv": [0, 0, 3, 16] }
+            }
+        }
+    ]
+}

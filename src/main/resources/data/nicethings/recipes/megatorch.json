@@ -1,0 +1,17 @@
+{
+    "type": "crafting_shaped",
+    "pattern": [
+        "TTT",
+        "DLD",
+        "DLD"
+    ],
+    "key": {
+        "T": [
+            { "item": "minecraft:torch" },
+            { "item": "minecraft:soul_torch" }
+        ],
+        "D": { "item": "minecraft:diamond" },
+        "L": { "tag": "logs" }
+    },
+    "result": { "item": "nicethings:megatorch" }
+}
