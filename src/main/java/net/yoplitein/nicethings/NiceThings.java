@@ -13,6 +13,13 @@ public class NiceThings implements ModInitializer
 	public void onInitialize()
 	{
 		LOGGER.info("hello from nice things");
+		LOGGER.info("<loglevels>");
+		LOGGER.trace("trace");
+		LOGGER.debug("debug");
+		LOGGER.info("info");
+		LOGGER.warn("warn");
+		LOGGER.error("error");
+		LOGGER.info("</loglevels>");
 		
 		CropClick.initialize();
 		Twerking.initialize();
