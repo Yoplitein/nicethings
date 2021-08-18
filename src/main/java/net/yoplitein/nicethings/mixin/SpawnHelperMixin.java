@@ -9,8 +9,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.entity.SpawnRestriction;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.ServerWorldAccess;
 import net.minecraft.world.SpawnHelper;
 import net.minecraft.world.WorldView;
 import net.minecraft.world.poi.PointOfInterestStorage.OccupationStatus;
@@ -41,7 +41,7 @@ public class SpawnHelperMixin
             return;
         }
         
-        final var world = (ServerWorld)worldView;
+        final var world = ((ServerWorldAccess)worldView).toServerWorld();
         final var poiStorage = world.getPointOfInterestStorage();
         
         var nearbyTorch = poiStorage.getInSquare(
