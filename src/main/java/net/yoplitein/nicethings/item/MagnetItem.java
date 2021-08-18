@@ -1,5 +1,7 @@
 package net.yoplitein.nicethings.item;
 
+import java.util.UUID;
+
 import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.fabric.api.util.NbtType;
@@ -18,8 +20,10 @@ import net.minecraft.world.World;
 
 public class MagnetItem extends Item
 {
-	private static final double RANGE = 10.0;
-	private static final int COOLDOWN_TICKS = 5;
+	private static final double RANGE = 10.0; // range of the magnet, in blocks
+	private static final int COOLDOWN_TICKS = 5; // number of ticks between scanning for items
+	private static final int PICKUP_DELAY_TICKS = 100; // immunity ticks for items dropped by the player
+	private static final int VANILLA_PICKUP_DELAY = 40; // vanilla pickup delay for items dropped by entities
 	private static final String TAG_ACTIVE = "magnet_active";
 	private static final String TAG_COOLDOWN = "magnet_cooldown";
 	
@@ -86,10 +90,22 @@ public class MagnetItem extends Item
 			tag.putByte(TAG_COOLDOWN, (byte)COOLDOWN_TICKS);
 		
 		final var box = new Box(player.getBlockPos()).expand(RANGE);
-		final var items = world.getEntitiesByClass(ItemEntity.class, box, e -> !e.cannotPickup());
+		final var playerUUID = player.getUuid();
+		final var items = world.getEntitiesByClass(ItemEntity.class, box, e -> isItemAffected(e, playerUUID));
 		
 		final var pos = player.getPos();
 		for(var item: items) item.setPosition(pos);
+	}
+	
+	private static boolean isItemAffected(ItemEntity item, UUID playerUUID)
+	{
+		if(playerUUID.equals(item.getThrower()))
+			// if this item was thrown by the player holding the magnet, they probably
+			// don't want to pick it right back up, so we apply some extra delay
+			return item.getItemAge() > VANILLA_PICKUP_DELAY + PICKUP_DELAY_TICKS;
+		else
+			// otherwise default behaviour is to magnet items as soon as they can be picked up by anyone
+			return !item.cannotPickup();
 	}
 	
 	public static boolean isActivated(@Nullable NbtCompound tag)
