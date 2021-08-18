@@ -14,6 +14,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.poi.PointOfInterestType;
 import net.yoplitein.nicethings.block.MegatorchBlock;
+import net.yoplitein.nicethings.item.MagnetItem;
 
 public class NiceThings implements ModInitializer
 {
@@ -27,6 +28,11 @@ public class NiceThings implements ModInitializer
 				.resistance(1200.0f) // no creepering allowed
 				.luminance(15)
 				.sounds(BlockSoundGroup.WOOD)
+	);
+	
+	public static final MagnetItem MAGNET_ITEM = new MagnetItem(
+		new FabricItemSettings()
+			.maxCount(1)
 	);
 	
 	public static PointOfInterestType MEGATORCHES_POI;
@@ -45,6 +51,8 @@ public class NiceThings implements ModInitializer
 		
 		Registry.register(Registry.BLOCK, new Identifier(MODID, "megatorch"), MEGATORCH_BLOCK);
 		Registry.register(Registry.ITEM, new Identifier(MODID, "megatorch"), new BlockItem(MEGATORCH_BLOCK, new FabricItemSettings().fireproof()));
+		
+		Registry.register(Registry.ITEM, new Identifier(MODID, "magnet"), MAGNET_ITEM);
 		
 		MEGATORCHES_POI = PointOfInterestHelper.register(new Identifier(MODID, "megatorches"), 0, 1, MEGATORCH_BLOCK);
 		

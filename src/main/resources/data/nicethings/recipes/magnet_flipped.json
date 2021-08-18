@@ -1,0 +1,15 @@
+{
+    "type": "crafting_shaped",
+    "pattern": [
+        "IBC",
+        "C  ",
+        "IRC"
+    ],
+    "key": {
+        "C": { "item": "minecraft:copper_ingot" },
+        "I": { "item": "minecraft:iron_ingot" },
+        "R": { "item": "minecraft:red_dye" },
+        "B": { "item": "minecraft:blue_dye" }
+    },
+    "result": { "item": "nicethings:magnet" }
+}
